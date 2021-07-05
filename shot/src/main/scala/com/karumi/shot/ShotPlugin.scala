@@ -134,10 +134,9 @@ class ShotPlugin extends Plugin[Project] {
     // Some projects configure different build types and only one of them is allowed to run instrumentation tasks
     // Based on this, we need to first check if the instrumentation task is available or not. This let us use Shot
     // for different build types even if it is not the default one
-    val instrumentationTask =
+    val instrumentationTaskProvider =
       try {
-        tasks
-          .getByName(instrumentationTaskName)
+        tasks.named(instrumentationTaskName)
       } catch {
         case e: Throwable => return
       }
@@ -185,16 +184,17 @@ class ShotPlugin extends Plugin[Project] {
 
     if (runInstrumentation(project, extension)) {
       executeScreenshot.configure { task =>
-        task.dependsOn(instrumentationTaskName)
+        task.dependsOn(instrumentationTaskProvider)
         task.dependsOn(downloadScreenshots)
         task.dependsOn(removeScreenshotsAfterExecution)
       }
 
       downloadScreenshots.configure { task =>
-        task.mustRunAfter(instrumentationTaskName)
+        task.mustRunAfter(instrumentationTaskProvider)
       }
-      instrumentationTask
-        .dependsOn(removeScreenshotsBeforeExecution)
+      instrumentationTaskProvider.configure { task =>
+        task.dependsOn(removeScreenshotsBeforeExecution)
+      }
       removeScreenshotsAfterExecution.configure { task =>
         task.mustRunAfter(downloadScreenshots)
       }
